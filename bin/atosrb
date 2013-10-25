@@ -1,0 +1,43 @@
+#!/usr/bin/env ruby
+
+require 'optparse'
+require 'atos_wrapper'
+
+options = {}
+options_parser = OptionParser.new do |opts|
+  opts.banner = "Usage: atosrb [options] <application.app> <crashlog file/s or directory/ies>"
+  opts.on("--arch architecture", "Specify architecture. Default: x86_64") do |arch|
+    options[:arch] = arch
+  end
+  opts.on("-h", "--help", "Show this message") do
+    puts opts
+    exit
+  end
+end
+options_parser.parse!
+
+if ARGV.count < 2
+  puts options_parser.banner
+  exit 1
+end
+
+begin
+  wrapper = AtosWrapper.new(ARGV[0], options)
+
+  ARGV[1..-1].each do |path|
+    if File.file? path
+      # input is a file, process single crashlog
+      wrapper.process path
+    elsif File.directory? path
+      # input is a directory, search for *.crash files and process each
+      Dir[File.join(path, '*.crash')].each do |f|
+        wrapper.process f
+      end
+    else
+      puts "Error: unable to process '#{path}', not a file or directory!"
+    end
+  end
+rescue AtosWrapper::Error => ex
+  puts "Error: #{ex.message}"
+  exit 1
+end
